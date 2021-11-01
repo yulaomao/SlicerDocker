@@ -1,10 +1,10 @@
-FROM debian:bullseye-20200422-slim
+FROM ubuntu:latest
 
 ################################################################################
 # Prevent apt-get from prompting for keyboard choice
 #  https://superuser.com/questions/1356914/how-to-install-xserver-xorg-in-unattended-mode
 ENV DEBIAN_FRONTEND=noninteractive
-
+ENV LANG C.UTF-8
 ################################################################################
 # Remove documentation to save hard drive space
 #  https://askubuntu.com/questions/129566/remove-documentation-to-save-hard-drive-space
@@ -71,10 +71,10 @@ ARG SLICER_DOWNLOAD_URL=https://download.slicer.org/bitstream/61690039342a877cb3
 #ARG SLICER_DOWNLOAD_URL=https://download.slicer.org/bitstream/60add70fae4540bf6a89bfb4
 
 # Use local package:
-#ADD $SLICER_ARCHIVE.tar.gz ${HOME}/
+ADD $SLICER_ARCHIVE knee-1.1.1-0000-00-00-linux-amd64.tar.gz ${HOME}/
 
 # Download package:
-RUN curl -JL "$SLICER_DOWNLOAD_URL" | tar xz -C /tmp && mv /tmp/Slicer* Slicer
+RUN tar -zxvf knee-1.1.1-0000-00-00-linux-amd64.tar.gz -C /tmp && mv /tmp/knee-1.1.1-0000-00-00-linux-amd64* Slicer
 
 ################################################################################
 # these go after installs to avoid trivial invalidation
@@ -89,11 +89,14 @@ COPY xorg.conf .
 
 # Build rebind.so (required by websockify)
 RUN set -x && \
+    sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list && \
+    apt-get clean && \
     apt-get update -q -y && \
+    apt-get install ttf-wqy-zenhei -q -y && \
     apt-get install -y build-essential --no-install-recommends && \
     mkdir src && \
     cd src && \
-    git clone https://github.com/novnc/websockify websockify && \
+    git clone https://github.com.cnpmjs.org/novnc/websockify websockify && \
     cd websockify && \
     make && \
     cp rebind.so /usr/lib/ && \
@@ -106,7 +109,7 @@ RUN set -x && \
 # Set up launcher for websockify
 # (websockify must run in  Slicer's Python environment)
 COPY websockify ./Slicer/bin/
-RUN chmod +x ${HOME}/Slicer/bin/websockify
+RUN chmod +x ${HOME}/Slicer/bin/websockify && chmod 777 -R ${HOME}/Slicer
 
 ################################################################################
 # Need to run Slicer as non-root because
@@ -126,22 +129,22 @@ ENV XDG_RUNTIME_DIR=/tmp/runtime-sliceruser
 # Install Jupyter desktop (configures noVNC connection adds a new "Desktop" option in New menu in Jupyter)
 
 # First upgrade pip
-RUN /home/sliceruser/Slicer/bin/PythonSlicer -m pip install --upgrade pip
+RUN /home/sliceruser/Slicer/bin/PythonSlicer -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade pip
 
 # Now install websockify and jupyter-server-proxy (fixed at tag v1.6.0)
-RUN /home/sliceruser/Slicer/bin/PythonSlicer -m pip install --upgrade websockify && \
+RUN /home/sliceruser/Slicer/bin/PythonSlicer -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --upgrade websockify && \
     cp /usr/lib/rebind.so /home/sliceruser/Slicer/lib/Python/lib/python3.6/site-packages/websockify/ && \
-    /home/sliceruser/Slicer/bin/PythonSlicer -m pip install notebook jupyterhub jupyterlab && \
-    /home/sliceruser/Slicer/bin/PythonSlicer -m pip install -e \
-        git+https://github.com/lassoan/jupyter-desktop-server#egg=jupyter-desktop-server \
-        git+https://github.com/jupyterhub/jupyter-server-proxy@v1.6.0#egg=jupyter-server-proxy
+    /home/sliceruser/Slicer/bin/PythonSlicer -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple notebook jupyterhub jupyterlab && \
+    /home/sliceruser/Slicer/bin/PythonSlicer -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -e \
+        git+https://gitee.com/yu-guoqing/jupyter-desktop-server#egg=jupyter-desktop-server \
+        git+https://github.com.cnpmjs.org/jupyterhub/jupyter-server-proxy@v1.6.0#egg=jupyter-server-proxy
 
 ################################################################################
 # Install Slicer extensions
 
 COPY start-xorg.sh .
 COPY install.sh .
-RUN ./install.sh ${HOME}/Slicer/Slicer && \
+RUN ./install.sh ${HOME}/Slicer/knee && \
     rm ${HOME}/install.sh
 
 ################################################################################

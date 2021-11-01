@@ -31,29 +31,9 @@ slicer.app.settings().setValue("Markups/GlyphScale", 3)
 slicer.app.settings().setValue("Markups/UseGlyphScale", True)
 '
 
-echo "Install SlicerJupyter extension"
-$slicer_executable -c '
-em = slicer.app.extensionsManagerModel()
-extensionMetaData = em.retrieveExtensionMetadataByName("SlicerJupyter")
-if slicer.app.majorVersion*100+slicer.app.minorVersion < 413:
-    # Slicer-4.11
-    itemId = extensionMetaData["item_id"]
-    url = f"{em.serverUrl().toString()}/download?items={itemId}"
-    extensionPackageFilename = f"{slicer.app.temporaryPath}/{itemId}"
-    slicer.util.downloadFile(url, extensionPackageFilename)
-else:
-    # Slicer-4.13
-    itemId = extensionMetaData["_id"]
-    url = f"{em.serverUrl().toString()}/api/v1/item/{itemId}/download"
-    extensionPackageFilename = f"{slicer.app.temporaryPath}/{itemId}"
-    slicer.util.downloadFile(url, extensionPackageFilename)
-em.installExtension(extensionPackageFilename)
-'
 
-echo "Install Jupyter server (in Slicer's Python environment) and Slicer Jupyter kernel"
-$slicer_executable -c '
-slicer.modules.jupyterkernel.installInternalJupyterServer()
-'
+
+
 
 ################################################################################
 # Shutdown headless environment
